@@ -1,0 +1,60 @@
+---
+description: Spring Boot project conventions and coding standards
+alwaysApply: true
+---
+
+# Spring Boot Project Rules
+
+## 1. Architecture & Patterns
+* **Layered Architecture:** Always follow the Controller -> Service -> Repository pattern. 
+* **DTOs:** Never expose JPA entities in the REST layer. Always generate DTOs for request/response.
+* **Dependency Injection:** Prefer constructor-based injection over `@Autowired` on fields.
+* **Kotlin (if used):** Use `val` by default and leverage data classes for DTOs and entities.
+
+## 2. Security (Critical)
+* **Authorization:** Always use `@PreAuthorize` with SpEL for fine-grained access control (ABAC/RBAC).
+* **Sensitive Data:** Ensure PII is never logged. Check for `ToString` methods on sensitive entities.
+* **Auth Context:** Prefer using our custom `SecurityUtils.getCurrentUser()` helper rather than directly calling `SecurityContextHolder`.
+* **Zero-Trust:** Every internal service-to-service call must include a JWT or OAuth2 bearer token.
+
+## 3. Resilience & Testing
+* **Exception Handling:** Use a `@ControllerAdvice` for global error handling. Do not return raw stack traces to the client.
+* **Tests:** Every new service method must have a corresponding JUnit 5 test. Use Mockito for mocking dependencies.
+* **Database:** Always use Liquidbase/Flyway for schema migrations. Never let Hibernate auto-generate DDL in production.
+
+## 4. Documentation & Style
+* **API:** All `@RestController` methods must be documented with Swagger/OpenAPI annotations.
+* **Logging:** Use SLF4J `log.info` for business milestones and `log.error` with the full exception for failures.
+
+## Stack
+
+- **Java 17**, Spring Boot 3.2, Maven
+- Packages: `controller`, `services`, `repository`, `model`, `main` (with `config` under `main`)
+
+## Controllers
+
+- Use `@RestController` and `@RequestMapping` for API base path (e.g. `/api/products`).
+- Return `ResponseEntity<T>` for create/update/delete; use `HttpStatus.CREATED` for creation.
+- Use constructor injection for services. Use inner DTOs (e.g. `ProductRequest`) for request bodies when the entity has more fields or different shape.
+- Protect admin endpoints with `@PreAuthorize("hasRole('ADMIN')")`.
+
+## Services
+
+- Annotate with `@Service`. Single responsibility; delegate persistence to repositories.
+- Use constructor injection for repositories. No `@Autowired` on fields.
+
+## Persistence
+
+- JPA entities in `model/`; repositories in `repository/` extending `JpaRepository`.
+- Prefer query methods (e.g. `findByCategory_Id`) over custom `@Query` when possible.
+
+## Tests
+
+- Integration tests: `@SpringBootTest(webEnvironment = RANDOM_PORT)`, `TestRestTemplate`, `withBasicAuth("admin", "admin")` for protected endpoints.
+- Use AssertJ: `assertThat(...).isEqualTo(...)`, `assertThat(...).isNotNull()`.
+- Test class package mirrors main code (e.g. tests in `main` package for controllers under `controller`).
+
+## Style
+
+- Prefer explicit, descriptive names. Use existing patterns (e.g. `getCategoryById`, `getProductsByCategoryId`).
+- Keep controllers thin; business logic in services.
